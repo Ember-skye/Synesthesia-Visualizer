@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOID // SYNESTHESIA</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Unbounded:wght@300;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080810;
+    --accent1: #ff3cac;
+    --accent2: #00f5ff;
+    --text: #e8e8ff;
+    --muted: #5a5a80;
+    --glass-border: rgba(255,255,255,0.08);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+   position: fixed;
+   top: 0;
+   left: 0;
+   width: 100%;
+  
+   padding: 1.4rem 2rem 0;
+  
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+  
+   z-index: 50;
+  
+   background: transparent;
+   pointer-events: none;
+   }   
+
+  .logo {
+    font-family: 'Unbounded', sans-serif;
+    font-weight: 900;
+    font-size: 1.1rem;
+    letter-spacing: 0.15em;
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(0,245,255,0.3));
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: all 0.3s;
+  }
+  .status-dot.live {
+    background: var(--accent1);
+    box-shadow: 0 0 10px var(--accent1);
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:0.5; transform:scale(1.3); }
+  }
+
+  /* ── Canvas area ── */
+  #canvas-container {
+    position: relative;
+    width: 100%;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  canvas {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  #bg-canvas     { opacity: 0.45;}
+  #vis-canvas    { z-index: 2; }
+  #glitch-canvas { z-index: 3; pointer-events: none; }
+
+  /* ── Track overlay ── */
+  .track-info {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%,-50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 4;
+    transition: opacity 0.5s;
+  }
+
+  .track-name {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 300;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    text-shadow: 0 0 30px var(--accent2);
+    white-space: nowrap;
+  }
+
+  .track-sub {
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+    margin-top: 7px;
+    text-transform: uppercase;
+  }
+
+  /* ── Drop zone ── */
+  .drop-zone {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: 20;
+    background: rgba(8,8,16,0.72);
+    backdrop-filter: blur(6px);
+    transition: opacity 0.4s;
+  }
+  .drop-zone.hidden { opacity:0; pointer-events:none; }
+
+  .drop-icon {
+    width: 62px; height: 62px;
+    border: 1px solid var(--accent1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-9px); }
+  }
+
+  .drop-icon svg { width:28px; height:28px; stroke:var(--accent1); fill:none; }
+
+  .drop-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 1rem; font-weight: 300;
+    letter-spacing: 0.1em;
+  }
+  .drop-sub { font-size:0.62rem; color:var(--muted); letter-spacing:0.12em; text-transform:uppercase; }
+  .drag-over #canvas-container { outline:2px dashed var(--accent2); outline-offset:-4px; }
+
+  /* ── Footer ── */
+  footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+  
+    padding: 0.9rem 2rem 1.4rem;
+  
+    z-index: 50;
+  
+    background: transparent;
+  
+    backdrop-filter: none;
+  }
+  
+  .time-display {
+    display: flex;
+    justify-content: space-between;
+    max-width: 520px;
+    margin: 0 auto 0.5rem;
+    font-size: 0.6rem;
+    color: var(--muted);
+  }
+
+  .progress-bar-wrap {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto 0.9rem;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent1), var(--accent2));
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.1s linear;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    justify-content: center;
+    margin-bottom: 0.85rem;
+  }
+
+  button {
+    background: transparent;
+    border: 1px solid var(--muted);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    padding: 0.48rem 1.2rem;
+    border-radius: 2px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  button:hover:not(:disabled) {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    box-shadow: 0 0 12px rgba(0,245,255,0.2);
+  }
+
+  button:disabled { opacity:0.35; cursor:not-allowed; }
+
+  button.active {
+    border-color: var(--accent1);
+    color: var(--accent1);
+    box-shadow: 0 0 12px rgba(255,60,172,0.3);
+  }
+
+  #upload-btn { border-color:var(--accent1); color:var(--accent1); }
+  #upload-btn:hover { background:rgba(255,60,172,0.08); box-shadow:0 0 16px rgba(255,60,172,0.35); }
+  #file-input { display:none; }
+
+  /* ── Mode switcher ── */
+  .viz-switcher {
+    display: flex;
+    gap: 0.35rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .viz-btn {
+    padding: 0.28rem 0.88rem;
+    font-size: 0.58rem;
+    border-color: rgba(255,255,255,0.1);
+    color: var(--muted);
+  }
+
+  .viz-btn:hover:not(:disabled) {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    box-shadow: 0 0 10px rgba(0,245,255,0.15);
+  }
+
+  .viz-btn.active {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    box-shadow: 0 0 14px rgba(0,245,255,0.35);
+    background: rgba(0,245,255,0.06);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">VOID // SYNESTHESIA</div>
+  <div class="status-pill">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">IDLE</span>
+  </div>
+</header>
+
+<div id="canvas-container">
+  <canvas id="bg-canvas"></canvas>
+  <canvas id="vis-canvas"></canvas>
+  <canvas id="glitch-canvas"></canvas>
+
+  <div class="track-info" id="track-info" style="opacity:0">
+    <div class="track-name" id="track-name">—</div>
+    <div class="track-sub">NOW PLAYING</div>
+  </div>
+
+  <div class="drop-zone" id="drop-zone">
+    <div class="drop-icon">
+      <svg viewBox="0 0 24 24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 19V6l12-3v13"/>
+        <circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/>
+      </svg>
+    </div>
+    <div class="drop-title">Drop your music here</div>
+    <div class="drop-sub">WAV · MP3 · FLAC · OGG</div>
+  </div>
+</div>
+
+<footer>
+  <div class="time-display">
+    <span id="time-current">0:00</span>
+    <span id="time-total">0:00</span>
+  </div>
+  <div class="progress-bar-wrap" id="progress-wrap">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+  </div>
+  <div class="controls">
+    <button id="upload-btn" onclick="document.getElementById('file-input').click()">↑ Upload</button>
+    <button id="play-btn" disabled>Play</button>
+    <button id="stop-btn" disabled>Stop</button>
+    <input type="file" id="file-input" accept="audio/*">
+  </div>
+  <div class="viz-switcher">
+    <button class="viz-btn active" data-viz="void">Void</button>
+    <button class="viz-btn" data-viz="wave">Wave</button>
+    <button class="viz-btn" data-viz="bars">Bars</button>
+    <button class="viz-btn" data-viz="radial">Radial</button>
+    <button class="viz-btn" data-viz="reactor">Reactor</button>
+    <button class="viz-btn" data-viz="nebula">Nebula</button>
+    <button class="viz-btn" data-viz="quantumFold">Quantum Fold</button>
+    <button class="viz-btn" data-viz="gravityTorus">Gravity Torus</button>
+    <button class="viz-btn" data-viz="singularity">Singularity</button>
+    <button class="viz-btn" data-viz="synthHorizon">Synth Horizon</button>
+    <button class="viz-btn" data-viz="liquidMandala">Liquid Mandala</button>
+  </div>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════
+   CANVAS SETUP
+═══════════════════════════════════════════════ */
+const bgCanvas     = document.getElementById('bg-canvas');
+const visCanvas    = document.getElementById('vis-canvas');
+const glitchCanvas = document.getElementById('glitch-canvas');
+const bgCtx  = bgCanvas.getContext('2d');
+const visCtx = visCanvas.getContext('2d');
+const gCtx   = glitchCanvas.getContext('2d');
+const container = document.getElementById('canvas-container');
+
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+let audioCtx, analyser, source, audioBuffer, gainNode;
+let isPlaying = false;
+let startTime = 0, startOffset = 0, duration = 0;
+let vizMode   = 'void';
+let freqArr, timeArr, bufferLength;
+
+let bgTime    = 0;
+let matrixTime= 0;
+let synthPhase= 0;
+let bassImpact= 0;
+let globalEnergy = 0;
+let beatValue    = 0;
+
+let cloudPoints  = [];
+let peaks        = [];
+let nebParticles = [];
+let voidPts      = [];
+
+const COLORS = ['#ff3cac','#00f5ff','#ffb800','#b026ff','#00ffa3'];
+
+/* ═══════════════════════════════════════════════
+   RESIZE
+═══════════════════════════════════════════════ */
+function resize() {
+  const W = container.clientWidth, H = container.clientHeight;
+  [bgCanvas, visCanvas, glitchCanvas].forEach(c => { c.width = W; c.height = H; });
+  buildCloud();
+}
+window.addEventListener('resize', resize);
+resize();
+
+function buildCloud() {
+  cloudPoints = [];
+  for (let i = 0; i < 600; i++) {
+    cloudPoints.push({
+      u:  (i / 600) * Math.PI * 2,
+      v:  ((i % 30) / 30) * Math.PI * 2,
+      sc: 0.4 + Math.random() * 0.6
+    });
+  }
+}
+
+// Build void particle pool once
+for (let i = 0; i < 700; i++) {
+  voidPts.push({
+    angle:  Math.random() * Math.PI * 2,
+    radius: Math.random() * 500,
+    speed:  0.001 + Math.random() * 0.01,
+    size:   Math.random() * 3,
+    offset: Math.random() * 1000
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   AUDIO
+═══════════════════════════════════════════════ */
+function setupAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.85;
+  gainNode = audioCtx.createGain();
+  analyser.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  bufferLength = analyser.frequencyBinCount;
+  freqArr = new Uint8Array(bufferLength);
+  timeArr = new Uint8Array(bufferLength);
+}
+
+function playAudio(offset = 0) {
+  if (source) { try { source.disconnect(); source.stop(); } catch(e){} }
+  source = audioCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(analyser);
+  source.start(0, offset);
+  startTime   = audioCtx.currentTime;
+  startOffset = offset;
+  source.onended = () => {
+    if (isPlaying) {
+      isPlaying = false;
+      setStatus(false);
+      const pb = document.getElementById('play-btn');
+      pb.textContent = 'Play';
+      pb.classList.remove('active');
+    }
+  };
+}
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith('audio/')) return;
+  setupAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const name = file.name.replace(/\.[^.]+$/, '');
+  document.getElementById('track-name').textContent = name.length > 28 ? name.slice(0,26)+'…' : name;
+  document.getElementById('track-info').style.opacity = '1';
+  document.getElementById('drop-zone').classList.add('hidden');
+  const reader = new FileReader();
+  reader.onload = e => {
+    audioCtx.decodeAudioData(e.target.result, buf => {
+      if (source && isPlaying) source.stop();
+      audioBuffer = buf;
+      duration    = buf.duration;
+      isPlaying   = false;
+      startOffset = 0;
+      peaks        = [];
+      nebParticles = [];
+      const pb = document.getElementById('play-btn');
+      const sb = document.getElementById('stop-btn');
+      pb.disabled = false; sb.disabled = false;
+      pb.textContent = 'Pause'; pb.classList.add('active');
+      playAudio(0);
+      isPlaying = true;
+      setStatus(true);
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function setStatus(live) {
+  document.getElementById('status-dot').className = 'status-dot' + (live ? ' live' : '');
+  document.getElementById('status-text').textContent = live ? 'LIVE' : 'IDLE';
+}
+
+/* ═══════════════════════════════════════════════
+   METRICS
+═══════════════════════════════════════════════ */
+function processMetrics() {
+  analyser.getByteFrequencyData(freqArr);
+  analyser.getByteTimeDomainData(timeArr);
+
+  let low = 0, total = 0, sub = 0;
+  for (let i = 0; i < 16;  i++) low   += freqArr[i];
+  for (let i = 0; i < bufferLength; i++) total += freqArr[i];
+  for (let i = 0; i < 6;   i++) sub   += freqArr[i];
+
+  globalEnergy = total / bufferLength / 255;
+  bassImpact  += ((low / 16 / 255) - bassImpact) * 0.22;
+
+  const target = Math.max(0, (sub/6 - 150) / 105);
+  beatValue   += (target - beatValue) * 0.28;
+}
+
+function energyOf(arr, n = 64) {
+  let s = 0;
+  for (let i = 0; i < n; i++) s += arr[i];
+  return s / n / 255;
+}
+
+/* ═══════════════════════════════════════════════
+   3D PROJECTION
+═══════════════════════════════════════════════ */
+function project3D(x, y, z, W, H) {
+  const rx = matrixTime * 0.35, ry = matrixTime * 0.5;
+  const cyR = Math.cos(ry), sy = Math.sin(ry);
+  const cxR = Math.cos(rx), sx = Math.sin(rx);
+  let x1 = x*cyR - z*sy,  z1 = x*sy + z*cyR;
+  let y2 = y*cxR - z1*sx, z2 = y*sx + z1*cxR;
+  const f = 380, d = 450;
+  const s = f / (f + z2 + d);
+  return { x: W/2 + x1*s, y: H/2 + y2*s, visible: z2+d > 10, scale: s };
+}
+
+/* ═══════════════════════════════════════════════
+   BACKGROUND  (Radial.html style)
+═══════════════════════════════════════════════ */
+function drawBg(W, H) {
+  bgCtx.clearRect(0, 0, W, H);
+  const energy = isPlaying ? globalEnergy : 0;
+  const orbs = [
+    { x: W*0.2, y: H*0.3, r: Math.min(W,H)*0.22, c: '#ff3cac' },
+    { x: W*0.8, y: H*0.6, r: Math.min(W,H)*0.18, c: '#00f5ff' },
+    { x: W*0.5, y: H*0.8, r: Math.min(W,H)*0.12, c: '#7b2fff' },
+  ];
+  orbs.forEach((o, i) => {
+    const pulse = 1 + energy*0.5 + Math.sin(bgTime*0.6 + i*2.1)*0.04;
+    const g = bgCtx.createRadialGradient(o.x,o.y,0, o.x,o.y, o.r*pulse);
+    g.addColorStop(0, o.c+'55');
+    g.addColorStop(1, o.c+'00');
+    bgCtx.beginPath();
+    bgCtx.arc(o.x, o.y, o.r*pulse, 0, Math.PI*2);
+    bgCtx.fillStyle = g;
+    bgCtx.fill();
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 1 — VOID
+═══════════════════════════════════════════════ */
+function drawVoid(W, H) {
+  const energy = energyOf(freqArr);
+  const cx = W/2, cy = H/2;
+  const radius = 120 + energy*100;
+
+  visCtx.clearRect(0, 0, W, H);
+
+  const g = visCtx.createRadialGradient(cx,cy,0, cx,cy, radius*2);
+  g.addColorStop(0, '#000');
+  g.addColorStop(0.3, `rgba(255,46,136,${0.45+energy})`);
+  g.addColorStop(1, 'transparent');
+  visCtx.beginPath();
+  visCtx.arc(cx, cy, radius*2, 0, Math.PI*2);
+  visCtx.fillStyle = g;
+  visCtx.fill();
+
+  voidPts.forEach((p, i) => {
+    p.angle += p.speed * (1 + energy*5);
+    const r = p.radius * (0.5 + energy*0.6);
+    const x = cx + Math.cos(p.angle + p.offset)*r;
+    const y = cy + Math.sin(p.angle + p.offset)*r;
+    const fv = freqArr[i % bufferLength] / 255;
+    visCtx.beginPath();
+    visCtx.arc(x, y, p.size + fv*4, 0, Math.PI*2);
+    visCtx.fillStyle   = `hsla(${200+fv*160},100%,70%,${0.3+fv})`;
+    visCtx.shadowBlur  = 16 + fv*16;
+    visCtx.shadowColor = '#00f5ff';
+    visCtx.fill();
+  });
+  visCtx.shadowBlur = 0;
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 2 — WAVE  (multi-layer, Radial.html)
+═══════════════════════════════════════════════ */
+function drawWave(W, H) {
+  visCtx.clearRect(0, 0, W, H);
+  const sliceW = W / bufferLength;
+  const colors = ['#ff3cac','#00f5ff','#7b2fff'];
+  const alphas = [0.9, 0.5, 0.25];
+  const widths = [2.5, 1.5, 1.0];
+  const blurs  = [12, 6, 3];
+  const shifts = [0, 8, 16];
+
+  for (let layer = 0; layer < 3; layer++) {
+    visCtx.beginPath();
+    let x = 0;
+    visCtx.strokeStyle = colors[layer];
+    visCtx.lineWidth   = widths[layer];
+    visCtx.shadowColor = colors[layer];
+    visCtx.shadowBlur  = blurs[layer];
+    visCtx.globalAlpha = alphas[layer];
+    for (let i = 0; i < bufferLength; i++) {
+      const v = timeArr[i] / 128.0;
+      const y = v * H/2 + shifts[layer];
+      if (i === 0) visCtx.moveTo(x, y); else visCtx.lineTo(x, y);
+      x += sliceW;
+    }
+    visCtx.stroke();
+  }
+  visCtx.globalAlpha = 1;
+  visCtx.shadowBlur  = 0;
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 3 — BARS  (Reactor.html — rounded, peak caps)
+═══════════════════════════════════════════════ */
+function drawBars(W, H) {
+  visCtx.clearRect(0, 0, W, H);
+  const count = Math.min(bufferLength, 128);
+  const barW  = (W / count) * 0.7;
+  const gap   = (W / count) * 0.3;
+  if (peaks.length !== count) peaks = new Array(count).fill(0);
+
+  for (let i = 0; i < count; i++) {
+    const val = freqArr[i] / 255;
+    const bh  = Math.pow(val, 1.5) * H * 0.65;
+    const x   = i * (barW + gap) + gap/2;
+    const y   = H - bh;
+    const hue = (i / count * 280 + 200) % 360;
+
+    if (bh > peaks[i]) peaks[i] = bh;
+    else peaks[i] = Math.max(0, peaks[i] - 2.5 - val*2);
+
+    const grd = visCtx.createLinearGradient(x, H, x, y);
+    grd.addColorStop(0, `hsla(${hue},100%,20%,0.1)`);
+    grd.addColorStop(1, `hsl(${hue},100%,55%)`);
+    visCtx.fillStyle = grd;
+    visCtx.beginPath();
+    visCtx.roundRect(x, y, barW, bh, [barW/2, barW/2, 0, 0]);
+    visCtx.fill();
+
+    // peak cap
+    visCtx.fillStyle   = '#fff';
+    visCtx.shadowColor = `hsl(${hue},100%,70%)`;
+    visCtx.shadowBlur  = 8;
+    visCtx.globalAlpha = val * 0.85;
+    visCtx.beginPath();
+    visCtx.roundRect(x, H - peaks[i] - barW*0.5, barW, barW*0.4, barW/5);
+    visCtx.fill();
+    visCtx.globalAlpha = 1;
+    visCtx.shadowBlur  = 0;
+  }
+  // reflection
+  visCtx.save();
+  visCtx.scale(1,-1); visCtx.translate(0,-H); visCtx.globalAlpha = 0.07;
+  for (let i = 0; i < count; i++) {
+    const val = freqArr[i]/255;
+    const bh  = Math.pow(val,1.5)*H*0.65;
+    const x   = i*(barW+gap)+gap/2;
+    const hue = (i/count*280+200)%360;
+    visCtx.fillStyle = `hsl(${hue},100%,60%)`;
+    visCtx.fillRect(x, 0, barW, bh);
+  }
+  visCtx.restore();
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 4 — RADIAL SPOKES  (Radial.html)
+═══════════════════════════════════════════════ */
+function drawRadial(W, H) {
+  visCtx.clearRect(0, 0, W, H);
+  const cx = W/2, cy = H/2;
+  const baseR = Math.min(W,H) * 0.18;
+  const count = 128;
+  const step  = (Math.PI*2) / count;
+
+  let avg = 0;
+  for (let i = 0; i < count; i++) avg += freqArr[i];
+  avg = avg / count / 255;
+
+  const g = visCtx.createRadialGradient(cx,cy,0, cx,cy, Math.max(0.01, baseR*(1+avg)));
+  g.addColorStop(0, '#ff3cac44');
+  g.addColorStop(1, '#00000000');
+  visCtx.beginPath();
+  visCtx.arc(cx, cy, Math.max(0.01, baseR*1.5*(1+avg)), 0, Math.PI*2);
+  visCtx.fillStyle = g;
+  visCtx.fill();
+
+  for (let i = 0; i < count; i++) {
+    const val   = freqArr[i] / 255;
+    const angle = step*i - Math.PI/2;
+    const len   = val * Math.min(W,H) * 0.28;
+    const hue   = (i/count*360+200) % 360;
+    const x1 = cx + Math.cos(angle)*baseR;
+    const y1 = cy + Math.sin(angle)*baseR;
+    const x2 = cx + Math.cos(angle)*(baseR+len);
+    const y2 = cy + Math.sin(angle)*(baseR+len);
+    visCtx.beginPath(); visCtx.moveTo(x1,y1); visCtx.lineTo(x2,y2);
+    visCtx.strokeStyle = `hsla(${hue},100%,${55+val*30}%,1)`;
+    visCtx.lineWidth   = 2;
+    visCtx.shadowColor = `hsl(${hue},100%,60%)`;
+    visCtx.shadowBlur  = 8*val;
+    visCtx.stroke();
+  }
+  visCtx.shadowBlur = 0;
+  visCtx.beginPath();
+  visCtx.arc(cx, cy, Math.max(0.01, baseR-2), 0, Math.PI*2);
+  visCtx.strokeStyle = '#ffffff22';
+  visCtx.lineWidth = 1;
+  visCtx.stroke();
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 5 — REACTOR  (Reactor.html drawRadial)
+═══════════════════════════════════════════════ */
+function drawReactor(W, H) {
+  visCtx.clearRect(0, 0, W, H);
+  const cx = W/2, cy = H/2;
+  const count = 120;
+  const step  = (Math.PI*2) / count;
+
+  let avg = 0;
+  for (let i = 0; i < count; i++) avg += freqArr[i];
+  avg = avg / count / 255;
+  const baseR = Math.min(W,H)*0.15 + avg*50 + beatValue*30;
+
+  visCtx.save();
+  visCtx.translate(cx, cy);
+  visCtx.rotate(bgTime*0.5 + avg);
+
+  const coreG = visCtx.createRadialGradient(0,0,0, 0,0, baseR);
+  coreG.addColorStop(0, '#ffffff');
+  coreG.addColorStop(0.2, '#00f0ff');
+  coreG.addColorStop(1, 'transparent');
+  visCtx.fillStyle = coreG;
+  visCtx.beginPath();
+  visCtx.arc(0, 0, baseR*1.5, 0, Math.PI*2);
+  visCtx.fill();
+
+  for (let i = 0; i < count; i++) {
+    const val   = freqArr[i] / 255;
+    const angle = step * i;
+    const len   = val * Math.min(W,H) * 0.35;
+    const hue   = (i/count*360 - bgTime*100) % 360;
+    const color = `hsl(${hue},100%,60%)`;
+    const x1 = Math.cos(angle)*baseR,       y1 = Math.sin(angle)*baseR;
+    const x2 = Math.cos(angle)*(baseR+len), y2 = Math.sin(angle)*(baseR+len);
+    visCtx.beginPath(); visCtx.moveTo(x1,y1); visCtx.lineTo(x2,y2);
+    visCtx.strokeStyle = color;
+    visCtx.lineWidth   = 4;
+    visCtx.lineCap     = 'round';
+    visCtx.shadowColor = color;
+    visCtx.shadowBlur  = 15 + beatValue*20;
+    visCtx.stroke();
+    if (val > 0.5) {
+      visCtx.beginPath();
+      visCtx.arc(x1*0.8, y1*0.8, 3+beatValue*2, 0, Math.PI*2);
+      visCtx.fillStyle = '#fff';
+      visCtx.fill();
+    }
+  }
+  visCtx.restore();
+  visCtx.shadowBlur = 0;
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 6 — NEBULA  (Reactor.html drawParticles)
+═══════════════════════════════════════════════ */
+function drawNebula(W, H) {
+  // trailing fade — the nebula hallmark
+  visCtx.fillStyle = 'rgba(8,8,16,0.18)';
+  visCtx.fillRect(0, 0, W, H);
+
+  let energy = 0;
+  for (let i = 0; i < 32; i++) energy += freqArr[i];
+  energy = energy / 32 / 255;
+
+  if (Math.random() < energy*0.8 + 0.1) {
+    const cnt = Math.floor(energy*8) + 1;
+    for (let j = 0; j < cnt; j++) {
+      const angle  = Math.random() * Math.PI*2;
+      const radius = energy * 150;
+      const speed  = (2 + Math.random()*4) * (1 + energy);
+      nebParticles.push({
+        x:  W/2 + Math.cos(angle)*radius,
+        y:  H/2 + Math.sin(angle)*radius,
+        vx: Math.cos(angle)*speed + (Math.random()-0.5),
+        vy: Math.sin(angle)*speed + (Math.random()-0.5),
+        life:  1,
+        decay: 0.005 + Math.random()*0.015,
+        size:  3 + Math.random()*5*energy,
+        color: COLORS[Math.floor(Math.random()*COLORS.length)]
+      });
+    }
+  }
+
+  nebParticles = nebParticles.filter(p => p.life > 0);
+  nebParticles.forEach(p => {
+    // curl field for organic movement
+    p.vx += Math.cos(p.y*0.05) * 0.2;
+    p.vy += Math.sin(p.x*0.05) * 0.2;
+    p.x  += p.vx;
+    p.y  += p.vy;
+    p.life -= p.decay;
+    p.size *= 0.98;
+    visCtx.beginPath();
+    visCtx.arc(p.x, p.y, Math.max(0.1, p.size), 0, Math.PI*2);
+    visCtx.fillStyle   = p.color;
+    visCtx.globalAlpha = p.life;
+    visCtx.shadowColor = p.color;
+    visCtx.shadowBlur  = 10;
+    visCtx.fill();
+  });
+  visCtx.globalAlpha = 1;
+  visCtx.shadowBlur  = 0;
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 7 — QUANTUM FOLD  (3D polygon web)
+═══════════════════════════════════════════════ */
+function drawQuantumFold(W, H) {
+  visCtx.fillStyle = `rgba(2,2,5,${0.12+(1-bassImpact)*0.08})`;
+  visCtx.fillRect(0, 0, W, H);
+  const radiusMod = 160 + bassImpact*130;
+  const vCount = 12;
+  let nodes = [];
+  for (let i = 0; i < vCount; i++) {
+    const phi = (i/vCount)*Math.PI*2;
+    const so  = (freqArr[(i*12)%bufferLength]/255)*90*(0.5+bassImpact);
+    nodes.push(project3D(
+      Math.cos(phi)*(radiusMod+so),
+      Math.sin(phi)*(radiusMod+so),
+      Math.sin(matrixTime*2+i)*120,
+      W, H
+    ));
+  }
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i+1; j < nodes.length; j++) {
+      const p1 = nodes[i], p2 = nodes[j];
+      if (!p1.visible || !p2.visible) continue;
+      const dist = Math.hypot(p1.x-p2.x, p1.y-p2.y);
+      const maxD = Math.max(W,H)*0.42;
+      if (dist < maxD) {
+        const alpha = (1-dist/maxD)*(0.04+bassImpact*0.5);
+        visCtx.beginPath(); visCtx.moveTo(p1.x,p1.y); visCtx.lineTo(p2.x,p2.y);
+        visCtx.strokeStyle = i%2===0
+          ? `rgba(0,245,255,${alpha})`
+          : `rgba(255,60,172,${alpha})`;
+        visCtx.lineWidth = 1;
+        visCtx.stroke();
+      }
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 8 — GRAVITY TORUS  (3D point cloud)
+═══════════════════════════════════════════════ */
+function drawGravityTorus(W, H) {
+  visCtx.fillStyle = 'rgba(2,2,5,0.18)';
+  visCtx.fillRect(0, 0, W, H);
+  const majorR = 140 + globalEnergy*60;
+  const minorR = 45  + bassImpact*40;
+  cloudPoints.forEach((pt, idx) => {
+    const as = (freqArr[idx%bufferLength]/255)*35;
+    const cm = minorR + as;
+    const x3 = (majorR + cm*Math.cos(pt.v)) * Math.cos(pt.u + matrixTime*0.1);
+    const y3 = (majorR + cm*Math.cos(pt.v)) * Math.sin(pt.u + matrixTime*0.1);
+    const z3 = cm * Math.sin(pt.v);
+    const pr = project3D(x3, y3, z3, W, H);
+    if (pr.visible) {
+      const sz  = Math.max(0.1, (2+pt.sc*3)*pr.scale*(0.8+bassImpact));
+      const hue = (200 + (freqArr[idx%bufferLength]/255)*120) % 360;
+      visCtx.beginPath();
+      visCtx.arc(pr.x, pr.y, sz, 0, Math.PI*2);
+      visCtx.fillStyle = `hsla(${hue},100%,65%,${pr.scale*0.8})`;
+      visCtx.fill();
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 9 — SINGULARITY MESH  (3D terrain grid)
+═══════════════════════════════════════════════ */
+function drawSingularity(W, H) {
+  visCtx.fillStyle = `rgba(2,2,5,${0.1+(1-bassImpact)*0.15})`;
+  visCtx.fillRect(0, 0, W, H);
+  const cols = 24, rows = 20;
+  const sx = W*1.5/cols, sz = 700/rows;
+  let mesh = [];
+  for (let c = 0; c < cols; c++) {
+    mesh[c] = [];
+    for (let r = 0; r < rows; r++) {
+      const xr = (c-cols/2)*sx, zr = (r-rows/2)*sz;
+      const fi = Math.floor(Math.abs(c-cols/2)*4+r*2) % bufferLength;
+      const wm = ((timeArr[fi]-128)/128)*180*(0.4+bassImpact);
+      const yr = 100 + wm + Math.sin(matrixTime*2+c*0.5)*30*(1+beatValue);
+      mesh[c][r] = project3D(xr, yr, zr, W, H);
+    }
+  }
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      const cur = mesh[c][r];
+      if (!cur.visible) continue;
+      const bright = 0.1 + bassImpact*0.3 + beatValue*0.2;
+      if (c < cols-1 && mesh[c+1][r].visible) {
+        visCtx.strokeStyle = `rgba(0,245,255,${bright*cur.scale*1.5})`;
+        visCtx.lineWidth   = 1 + beatValue;
+        visCtx.beginPath(); visCtx.moveTo(cur.x,cur.y); visCtx.lineTo(mesh[c+1][r].x,mesh[c+1][r].y); visCtx.stroke();
+      }
+      if (r < rows-1 && mesh[c][r+1].visible) {
+        const hue = (200 + (freqArr[Math.floor(c*2)%bufferLength]/255)*100) % 360;
+        visCtx.strokeStyle = `hsla(${hue},100%,60%,${bright*cur.scale*1.5})`;
+        visCtx.lineWidth   = 1;
+        visCtx.beginPath(); visCtx.moveTo(cur.x,cur.y); visCtx.lineTo(mesh[c][r+1].x,mesh[c][r+1].y); visCtx.stroke();
+      }
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 10 — SYNTH HORIZON  (retrowave)
+═══════════════════════════════════════════════ */
+function drawSynthHorizon(W, H) {
+  visCtx.fillStyle = `rgba(2,2,5,${0.12+(1-beatValue)*0.1})`;
+  visCtx.fillRect(0, 0, W, H);
+  const horizY = H * 0.55;
+
+  // grid
+  visCtx.strokeStyle = `rgba(0,255,204,${0.06+beatValue*0.06})`;
+  visCtx.lineWidth = 1;
+  for (let i = 0; i <= 36; i++) {
+    const r = i/36;
+    const xT = W*0.2+(W*0.6)*r, xB = -W*0.5+(W*2)*r;
+    visCtx.beginPath(); visCtx.moveTo(xT,horizY); visCtx.lineTo(xB,H); visCtx.stroke();
+  }
+  for (let i = 0; i < 10; i++) {
+    const t = Math.pow(i/10,2);
+    const y = horizY+(H-horizY)*t;
+    visCtx.beginPath(); visCtx.moveTo(-W*0.5+(W*0.7)*(1-t), y); visCtx.lineTo(W*1.5-(W*0.7)*(1-t), y); visCtx.stroke();
+  }
+
+  // dual mountain peaks
+  for (let side = 0; side < 2; side++) {
+    visCtx.beginPath();
+    const col = side===0
+      ? `rgba(255,0,85,${0.9+beatValue*0.1})`
+      : `rgba(0,245,255,${0.9+beatValue*0.1})`;
+    visCtx.strokeStyle = col;
+    visCtx.lineWidth   = 3 + beatValue*2;
+    visCtx.shadowColor = col;
+    visCtx.shadowBlur  = 15 + beatValue*25;
+    const pts = 80;
+    for (let i = 0; i <= pts; i++) {
+      const di  = side===0 ? i : pts-i;
+      const val = Math.pow(freqArr[Math.floor(di*bufferLength/pts)]/255, 1.8);
+      const rawX = i*(W/pts);
+      const cd   = Math.abs(rawX-W/2)/(W/2);
+      const elev = val*H*0.38*Math.pow(1-cd,0.5)*(1+beatValue*0.4);
+      if (i===0) visCtx.moveTo(rawX, horizY-elev);
+      else        visCtx.lineTo(rawX, horizY-elev);
+    }
+    visCtx.stroke();
+    visCtx.shadowBlur = 0;
+  }
+
+  // horizon glow line
+  const hG = visCtx.createLinearGradient(0,horizY,W,horizY);
+  hG.addColorStop(0,'transparent');
+  hG.addColorStop(0.5,`rgba(0,255,204,${0.5+beatValue*0.4})`);
+  hG.addColorStop(1,'transparent');
+  visCtx.strokeStyle = hG;
+  visCtx.lineWidth   = 2 + beatValue*3;
+  visCtx.shadowColor = '#00ffcc';
+  visCtx.shadowBlur  = 20*(1+beatValue);
+  visCtx.beginPath(); visCtx.moveTo(0,horizY); visCtx.lineTo(W,horizY); visCtx.stroke();
+  visCtx.shadowBlur  = 0;
+}
+
+/* ═══════════════════════════════════════════════
+   MODE 11 — LIQUID MANDALA
+═══════════════════════════════════════════════ */
+function drawLiquidMandala(W, H) {
+  visCtx.fillStyle = `rgba(2,2,5,${0.08+(1-beatValue)*0.08})`;
+  visCtx.fillRect(0, 0, W, H);
+  const cx = W/2, cy = H/2;
+  const maxR = Math.min(W,H)*0.4;
+  const nodes = 180;
+
+  visCtx.save();
+  visCtx.translate(cx, cy);
+  visCtx.rotate(synthPhase*0.2);
+
+  // outer ring
+  visCtx.beginPath();
+  for (let i = 0; i < nodes; i++) {
+    const ang = (i/nodes)*Math.PI*2;
+    const fv  = freqArr[i%64]/255;
+    const tv  = (timeArr[i%bufferLength]/128) - 1;
+    const r   = maxR*0.6 + fv*120 + tv*35*beatValue;
+    const x = Math.cos(ang)*r, y = Math.sin(ang)*r;
+    if (i===0) visCtx.moveTo(x,y); else visCtx.lineTo(x,y);
+  }
+  visCtx.closePath();
+  visCtx.strokeStyle = `rgba(112,0,255,${0.5+beatValue*0.4})`;
+  visCtx.lineWidth   = 2 + beatValue*5;
+  visCtx.shadowColor = '#7000ff';
+  visCtx.shadowBlur  = 20*beatValue;
+  visCtx.stroke();
+
+  // inner ring
+  visCtx.beginPath();
+  for (let i = 0; i < nodes; i++) {
+    const ang = (i/nodes)*Math.PI*2 + Math.PI/nodes;
+    const fv  = freqArr[(i+32)%64]/255;
+    const r   = maxR*0.35 + fv*70;
+    const x = Math.cos(ang)*r, y = Math.sin(ang)*r;
+    if (i===0) visCtx.moveTo(x,y); else visCtx.lineTo(x,y);
+  }
+  visCtx.closePath();
+  visCtx.strokeStyle = `rgba(255,0,127,${0.4+beatValue*0.4})`;
+  visCtx.lineWidth   = 1.5;
+  visCtx.shadowColor = '#ff007f';
+  visCtx.shadowBlur  = 15*beatValue;
+  visCtx.stroke();
+
+  // starburst lattice
+  for (let i = 0; i < 60; i++) {
+    const ang = (i/60)*Math.PI*2;
+    const mag = (freqArr[i*2%bufferLength]/255)*maxR*0.9;
+    visCtx.beginPath(); visCtx.moveTo(0,0);
+    visCtx.lineTo(Math.cos(ang)*mag, Math.sin(ang)*mag);
+    visCtx.strokeStyle = `hsla(${(i*6+synthPhase*50)%360},100%,60%,${0.15+beatValue*0.55})`;
+    visCtx.lineWidth   = 1.5;
+    visCtx.shadowBlur  = 0;
+    visCtx.stroke();
+  }
+
+  visCtx.restore();
+  visCtx.shadowBlur = 0;
+}
+
+/* ═══════════════════════════════════════════════
+   MASTER RENDER LOOP
+═══════════════════════════════════════════════ */
+const NEEDS_PERSIST = new Set(['nebula','quantumFold','gravityTorus','singularity','synthHorizon','liquidMandala']);
+const IS_3D = new Set(['quantumFold','gravityTorus','singularity']);
+
+function render() {
+  requestAnimationFrame(render);
+  const W = visCanvas.width, H = visCanvas.height;
+
+  drawBg(W, H);
+  bgTime     += 0.016;
+  matrixTime += 0.016;
+  synthPhase += 0.018;
+
+  if (!analyser || !isPlaying) {
+    if (vizMode !== 'nebula') visCtx.clearRect(0,0,W,H);
+    gCtx.clearRect(0,0,W,H);
+    bassImpact = 0; beatValue = 0;
+    updateProgress();
+    return;
+  }
+
+  processMetrics();
+
+  switch (vizMode) {
+    case 'void':         drawVoid(W,H);         break;
+    case 'wave':         drawWave(W,H);         break;
+    case 'bars':         drawBars(W,H);         break;
+    case 'radial':       drawRadial(W,H);       break;
+    case 'reactor':      drawReactor(W,H);      break;
+    case 'nebula':       drawNebula(W,H);       break;
+    case 'quantumFold':  drawQuantumFold(W,H);  break;
+    case 'gravityTorus': drawGravityTorus(W,H); break;
+    case 'singularity':  drawSingularity(W,H);  break;
+    case 'synthHorizon': drawSynthHorizon(W,H); break;
+    case 'liquidMandala':drawLiquidMandala(W,H);break;
+  }
+
+  // glitch overlay on heavy 3D beats
+  gCtx.clearRect(0,0,W,H);
+  if (IS_3D.has(vizMode) && bassImpact > 0.55 && Math.random() < 0.3) {
+    gCtx.save();
+    gCtx.globalAlpha = bassImpact * 0.5;
+    gCtx.drawImage(visCanvas, (Math.random()-0.5)*14*bassImpact, 0, W, H);
+    gCtx.restore();
+  }
+
+  updateProgress();
+}
+
+/* ═══════════════════════════════════════════════
+   PROGRESS
+═══════════════════════════════════════════════ */
+function fmt(s) {
+  if (!isFinite(s)) return '0:00';
+  return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,'0')}`;
+}
+
+function updateProgress() {
+  if (!audioCtx || !duration) return;
+  const elapsed = audioCtx.currentTime - startTime + startOffset;
+  const pct = Math.min(elapsed/duration*100, 100);
+  document.getElementById('progress-fill').style.width = pct+'%';
+  document.getElementById('time-current').textContent  = fmt(elapsed);
+  document.getElementById('time-total').textContent    = fmt(duration);
+}
+
+/* ═══════════════════════════════════════════════
+   UI EVENTS
+═══════════════════════════════════════════════ */
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files.length) loadFile(e.target.files[0]);
+});
+
+document.getElementById('play-btn').addEventListener('click', () => {
+  if (!audioBuffer) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const pb = document.getElementById('play-btn');
+  if (isPlaying) {
+    const elapsed = audioCtx.currentTime - startTime + startOffset;
+    source.stop(); startOffset = elapsed;
+    isPlaying = false; setStatus(false);
+    pb.textContent = 'Play'; pb.classList.remove('active');
+  } else {
+    playAudio(startOffset);
+    isPlaying = true; setStatus(true);
+    pb.textContent = 'Pause'; pb.classList.add('active');
+  }
+});
+
+document.getElementById('stop-btn').addEventListener('click', () => {
+  if (!audioBuffer) return;
+  if (source) { try { source.stop(); } catch(e){} }
+  isPlaying = false; startOffset = 0; setStatus(false);
+  const pb = document.getElementById('play-btn');
+  pb.textContent = 'Play'; pb.classList.remove('active');
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('time-current').textContent = '0:00';
+});
+
+document.getElementById('progress-wrap').addEventListener('click', e => {
+  if (!audioBuffer) return;
+  const rect   = e.currentTarget.getBoundingClientRect();
+  const offset = ((e.clientX-rect.left)/rect.width)*duration;
+  startOffset = offset;
+  if (isPlaying) playAudio(offset);
+});
+
+document.querySelectorAll('.viz-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.viz-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    vizMode = btn.dataset.viz;
+    peaks = []; nebParticles = [];
+    if (vizMode !== 'nebula') visCtx.clearRect(0,0,visCanvas.width,visCanvas.height);
+    gCtx.clearRect(0,0,glitchCanvas.width,glitchCanvas.height);
+  });
+});
+
+document.body.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('drag-over'); });
+document.body.addEventListener('dragleave', () => document.body.classList.remove('drag-over'));
+document.body.addEventListener('drop', e => {
+  e.preventDefault(); document.body.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+});
+
+render();
+</script>
+</body>
+</html>
